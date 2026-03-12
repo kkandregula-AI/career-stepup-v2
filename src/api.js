@@ -1,40 +1,34 @@
 // src/api.js
-// All Claude API calls go through here.
-// The API key is read from the VITE_ANTHROPIC_API_KEY environment variable.
-// Set this in your Vercel project settings → Environment Variables.
-
-const MODEL = "claude-sonnet-4-20250514";
+// All Claude API calls go through /api/generate (Vercel serverless function)
+// so the API key never touches the browser.
 
 export async function callClaude({ messages, system, pdfBase64 = null }) {
-  const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error("VITE_ANTHROPIC_API_KEY is not set. Add it in Vercel Environment Variables.");
-
   const userContent = pdfBase64
     ? [
-        { type: "document", source: { type: "base64", media_type: "application/pdf", data: pdfBase64 } },
+        {
+          type: "document",
+          source: { type: "base64", media_type: "application/pdf", data: pdfBase64 },
+        },
         { type: "text", text: messages[0].content },
       ]
     : messages[0].content;
 
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+  const body = {
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 4000,
+    system,
+    messages: [{ role: "user", content: userContent }],
+  };
+
+  const res = await fetch("/api/generate", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "anthropic-dangerous-allow-browser": "true",
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: 4000,
-      system,
-      messages: [{ role: "user", content: userContent }],
-    }),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
   });
 
   if (!res.ok) {
     const e = await res.json().catch(() => ({}));
-    throw new Error(e?.error?.message || `Anthropic API error ${res.status}`);
+    throw new Error(e?.error || `Server error ${res.status}`);
   }
 
   const data = await res.json();
@@ -45,7 +39,6 @@ export async function callClaude({ messages, system, pdfBase64 = null }) {
 }
 
 export function extractJSON(text) {
-  // Strip markdown fences if present
   const stripped = text.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
   const start = stripped.indexOf("{");
   const end = stripped.lastIndexOf("}");
@@ -53,7 +46,7 @@ export function extractJSON(text) {
   try {
     return JSON.parse(stripped.slice(start, end + 1));
   } catch {
-    throw new Error("Could not parse AI response as JSON. Please try again.");
+    throw new Error("Could not parse AI response. Please try again.");
   }
 }
 
@@ -73,8 +66,8 @@ ${pdfBase64 ? "--- RESUME ---\n(Attached as PDF — extract all information from
 
 Instructions:
 1. Extract the best information from ALL sources provided
-2. Where sources conflict, pick the most detailed / impressive accurate version  
-3. Enhance bullet points to be recruiter-optimized: use strong action verbs, quantify achievements where possible
+2. Where sources conflict, pick the most detailed / impressive accurate version
+3. Enhance bullet points: use strong action verbs, quantify achievements where possible
 4. Infer tech stack and skills from GitHub repos if provided
 5. Write a compelling 2-3 sentence professional summary in third person
 6. List as many real skills as you can find across all sources
