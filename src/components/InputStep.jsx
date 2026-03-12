@@ -99,8 +99,11 @@ export default function InputStep({ onGenerate }) {
 
       {/* Logo */}
       <div style={{ animation: "fadeUp 0.5s ease", textAlign: "center", marginBottom: "48px" }}>
-        <div style={{ fontFamily: C.fontSerif, fontSize: "38px", color: C.text, letterSpacing: "-0.02em", marginBottom: "8px" }}>
+        <div style={{ fontFamily: C.fontSerif, fontSize: "38px", color: C.text, letterSpacing: "-0.02em", marginBottom: "4px" }}>
           Career <span style={{ color: C.gold, fontStyle: "italic" }}>StepUp</span>
+        </div>
+        <div style={{ fontSize: "11px", color: C.gold, letterSpacing: "0.18em", textTransform: "uppercase", fontFamily: C.fontMono, marginBottom: "10px", opacity: 0.7 }}>
+          Portfolio Builder
         </div>
         <p style={{ color: C.textMuted, fontSize: "14px", letterSpacing: "0.04em" }}>
           Drop in what you have. We'll build the rest.
