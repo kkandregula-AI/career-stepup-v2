@@ -1,25 +1,22 @@
 // src/api.js
-// Calls /api/github to get real GitHub data, then /api/generate for Claude to merge everything.
 
 // ── Fetch real GitHub data via our proxy ─────────────────────────────────────
 async function fetchGitHubData(username) {
   const res = await fetch(`/api/github?username=${encodeURIComponent(username)}`);
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Failed to fetch GitHub profile.");
-  return data; // { profile, repos }
+  return data;
 }
 
 // ── Format GitHub data as readable text for Claude ───────────────────────────
 function formatGitHubForPrompt({ profile, repos }) {
   const lines = [];
-
   lines.push(`Name: ${profile.name || profile.login}`);
   if (profile.bio) lines.push(`Bio: ${profile.bio}`);
   if (profile.location) lines.push(`Location: ${profile.location}`);
   if (profile.blog) lines.push(`Website: ${profile.blog}`);
   lines.push(`GitHub: ${profile.html_url}`);
   lines.push(`Public Repos: ${profile.public_repos}, Followers: ${profile.followers}`);
-
   const ownRepos = repos.filter(r => !r.fork).slice(0, 30);
   if (ownRepos.length > 0) {
     lines.push("\nRepositories:");
@@ -27,29 +24,32 @@ function formatGitHubForPrompt({ profile, repos }) {
       lines.push(`- ${r.name}${r.language ? ` [${r.language}]` : ""}${r.stargazers_count ? ` ⭐${r.stargazers_count}` : ""}${r.description ? `: ${r.description}` : ""}${r.homepage ? ` → Live: ${r.homepage}` : ""}`);
     });
   }
-
   const languages = [...new Set(repos.map(r => r.language).filter(Boolean))];
-  if (languages.length > 0) {
-    lines.push(`\nLanguages used: ${languages.join(", ")}`);
-  }
-
+  if (languages.length) lines.push(`\nLanguages used: ${languages.join(", ")}`);
   const liveProjects = repos.filter(r => r.homepage && r.homepage.trim());
-  if (liveProjects.length > 0) {
+  if (liveProjects.length) {
     lines.push("\nDeployed projects:");
     liveProjects.forEach(r => lines.push(`- ${r.name}: ${r.homepage}`));
   }
-
   return lines.join("\n");
 }
 
-// ── Call Claude via our serverless proxy ─────────────────────────────────────
-async function callClaude({ messages, system, pdfBase64 = null }) {
-  const userContent = pdfBase64
-    ? [
-        { type: "document", source: { type: "base64", media_type: "application/pdf", data: pdfBase64 } },
-        { type: "text", text: messages[0].content },
-      ]
-    : messages[0].content;
+// ── Call Claude via serverless proxy — supports up to 2 PDFs ─────────────────
+async function callClaude({ messages, system, pdfBase64 = null, linkedinPdfBase64 = null }) {
+  // Build content array: PDFs first (as document blocks), then text prompt
+  let userContent;
+  const docs = [];
+  if (pdfBase64) {
+    docs.push({ type: "document", source: { type: "base64", media_type: "application/pdf", data: pdfBase64 } });
+  }
+  if (linkedinPdfBase64) {
+    docs.push({ type: "document", source: { type: "base64", media_type: "application/pdf", data: linkedinPdfBase64 } });
+  }
+  if (docs.length > 0) {
+    userContent = [...docs, { type: "text", text: messages[0].content }];
+  } else {
+    userContent = messages[0].content;
+  }
 
   const body = {
     model: "claude-sonnet-4-20250514",
@@ -87,12 +87,11 @@ export function extractJSON(text) {
 }
 
 // ── Main export: build portfolio from all sources ────────────────────────────
-export async function buildPortfolio({ pdfBase64, linkedinText, githubUsername }) {
+export async function buildPortfolio({ pdfBase64, linkedinText, linkedinPdfBase64, githubUsername }) {
   const sources = [];
   let githubText = "";
 
-  // Fetch real GitHub data if username provided
-  if (githubUsername.trim()) {
+  if (githubUsername?.trim()) {
     try {
       const ghData = await fetchGitHubData(githubUsername.trim());
       githubText = formatGitHubForPrompt(ghData);
@@ -103,15 +102,17 @@ export async function buildPortfolio({ pdfBase64, linkedinText, githubUsername }
   }
 
   if (pdfBase64) sources.push("Resume PDF");
-  if (linkedinText.trim()) sources.push("LinkedIn");
+  if (linkedinText?.trim()) sources.push("LinkedIn Text");
+  if (linkedinPdfBase64) sources.push("LinkedIn PDF");
 
   const prompt = `You are an expert career consultant and portfolio writer. Analyze ALL provided sources and synthesize the BEST possible professional portfolio.
 
 Sources provided: ${sources.join(", ")}
 
 ${githubText ? `--- GITHUB PROFILE (real live data) ---\n${githubText}\n` : ""}
-${linkedinText ? `--- LINKEDIN PROFILE TEXT ---\n${linkedinText.trim()}\n` : ""}
-${pdfBase64 ? "--- RESUME PDF ---\n(Attached — extract all details: contact info, experience, education, skills, projects)\n" : ""}
+${linkedinText?.trim() ? `--- LINKEDIN PROFILE TEXT ---\n${linkedinText.trim()}\n` : ""}
+${pdfBase64 ? "--- RESUME PDF ---\n(First attached PDF — extract contact info, experience, education, skills, projects)\n" : ""}
+${linkedinPdfBase64 ? "--- LINKEDIN PDF ---\n(Second attached PDF — extract profile summary, experience, education, skills, certifications)\n" : ""}
 
 Instructions:
 1. Extract the best information from ALL sources
@@ -170,6 +171,7 @@ Return ONLY a raw JSON object — no markdown, no fences, no explanation. Start 
     messages: [{ role: "user", content: prompt }],
     system,
     pdfBase64: pdfBase64 || null,
+    linkedinPdfBase64: linkedinPdfBase64 || null,
   });
 
   return extractJSON(raw);

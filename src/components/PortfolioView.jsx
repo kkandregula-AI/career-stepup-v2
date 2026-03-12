@@ -4,8 +4,11 @@ import { C, GlobalStyles } from "../styles.js";
 function isValidUrl(s) {
   if (!s || typeof s !== "string") return false;
   const t = s.trim().toLowerCase();
-  return t.length > 4 && !["null", "undefined", "n/a", "none"].includes(t) &&
-    (t.startsWith("http") || t.startsWith("www."));
+  return (
+    t.length > 4 &&
+    !["null", "undefined", "n/a", "none", ""].includes(t) &&
+    (t.startsWith("http") || t.startsWith("www."))
+  );
 }
 
 const LinkIcon = () => (
@@ -14,331 +17,412 @@ const LinkIcon = () => (
   </svg>
 );
 
-// ── Build a clean print-ready HTML document ───────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Build a dedicated, self-contained print/PDF HTML page
+// Uses a LIGHT theme so it prints cleanly on paper / PDF
+// ─────────────────────────────────────────────────────────────────────────────
 function buildPrintHTML(data, filename) {
-  const safe = (v) => (v && v !== "null" && v !== "undefined" ? v : null);
+  const safe = (v) =>
+    v && v !== "null" && v !== "undefined" && v !== "none" ? v : null;
 
-  const experienceHTML = (data.experience || []).map(exp => `
-    <div class="card avoid-break">
+  const esc = (s) =>
+    String(s || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+
+  const experienceHTML = (data.experience || [])
+    .map(
+      (exp) => `
+    <div class="card">
       <div class="card-header">
         <div>
-          <div class="card-title">${exp.role || ""}</div>
-          <div class="card-sub">${exp.company || ""}</div>
+          <div class="card-title">${esc(exp.role)}</div>
+          <div class="card-company">${esc(exp.company)}</div>
         </div>
-        <div class="period">${exp.period || ""}</div>
+        <div class="period">${esc(exp.period)}</div>
       </div>
-      <ul class="highlights">
-        ${(exp.highlights || []).map(h => `<li>${h}</li>`).join("")}
+      <ul class="bullets">
+        ${(exp.highlights || []).map((h) => `<li>${esc(h)}</li>`).join("")}
       </ul>
-    </div>`).join("");
+    </div>`
+    )
+    .join("");
 
-  const projectsHTML = (data.projects || []).map(proj => `
-    <div class="proj-card avoid-break">
-      <div class="proj-title">${proj.name || ""}</div>
-      <div class="proj-desc">${proj.description || ""}</div>
-      ${(proj.tech || []).length ? `<div class="tags">${proj.tech.map(t => `<span class="tag">${t}</span>`).join("")}</div>` : ""}
+  const projectsHTML = (data.projects || [])
+    .map(
+      (proj) => `
+    <div class="proj-card">
+      <div class="proj-title">${esc(proj.name)}</div>
+      <div class="proj-desc">${esc(proj.description)}</div>
+      ${
+        (proj.tech || []).length
+          ? `<div class="tags">${proj.tech.map((t) => `<span class="tag">${esc(t)}</span>`).join("")}</div>`
+          : ""
+      }
       <div class="proj-links">
-        ${isValidUrl(proj.url) ? `<a href="${proj.url}" class="link-live">🌐 Live</a>` : ""}
-        ${isValidUrl(proj.github) ? `<a href="${proj.github}" class="link-code">Code ↗</a>` : ""}
+        ${isValidUrl(proj.url) ? `<a href="${esc(proj.url)}" class="link-live">🌐 Live</a>` : ""}
+        ${isValidUrl(proj.github) ? `<a href="${esc(proj.github)}" class="link-code">Code ↗</a>` : ""}
       </div>
-    </div>`).join("");
+    </div>`
+    )
+    .join("");
 
-  const educationHTML = (data.education || []).map(edu => `
-    <div class="card avoid-break" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px;">
-      <div>
-        <div class="card-title">${edu.degree || ""}</div>
-        <div class="card-sub">${edu.institution || ""}</div>
-      </div>
-      <div class="period">${edu.year || ""}</div>
-    </div>`).join("");
+  const educationHTML = (data.education || [])
+    .map(
+      (edu) => `
+    <div class="card edu-card">
+      <div><div class="card-title">${esc(edu.degree)}</div><div class="card-company">${esc(edu.institution)}</div></div>
+      <div class="period">${esc(edu.year)}</div>
+    </div>`
+    )
+    .join("");
 
-  const skillsHTML = (data.skills || []).map(s => `<span class="pill">${s}</span>`).join("");
-  const certsHTML = (data.certifications || []).map(c => `<div class="cert-item"><span class="diamond">◆</span>${c}</div>`).join("");
-  const langsHTML = (data.languages || []).map(l => `<span class="pill">${l}</span>`).join("");
+  const skillsHTML = (data.skills || [])
+    .map((s) => `<span class="pill">${esc(s)}</span>`)
+    .join("");
+
+  const certsHTML = (data.certifications || [])
+    .map((c) => `<div class="cert-row"><span class="dot">●</span><span>${esc(c)}</span></div>`)
+    .join("");
+
+  const langsHTML = (data.languages || [])
+    .map((l) => `<span class="pill">${esc(l)}</span>`)
+    .join("");
 
   const contactHTML = [
-    safe(data.email) ? `<a href="mailto:${data.email}" class="chip chip-gold">${data.email}</a>` : "",
-    safe(data.phone) ? `<span class="chip">${data.phone}</span>` : "",
-    safe(data.location) ? `<span class="chip">📍 ${data.location}</span>` : "",
-    isValidUrl(data.website) ? `<a href="${data.website}" class="chip chip-gold">Website ↗</a>` : "",
-    isValidUrl(data.github) ? `<a href="${data.github}" class="chip chip-gold">GitHub ↗</a>` : "",
-    isValidUrl(data.linkedin) ? `<a href="${data.linkedin}" class="chip chip-gold">LinkedIn ↗</a>` : "",
-  ].filter(Boolean).join("");
+    safe(data.email)
+      ? `<a href="mailto:${esc(data.email)}" class="chip">${esc(data.email)}</a>`
+      : "",
+    safe(data.phone) ? `<span class="chip">${esc(data.phone)}</span>` : "",
+    safe(data.location) ? `<span class="chip">📍 ${esc(data.location)}</span>` : "",
+    isValidUrl(data.website)
+      ? `<a href="${esc(data.website)}" class="chip">Website ↗</a>`
+      : "",
+    isValidUrl(data.github)
+      ? `<a href="${esc(data.github)}" class="chip">GitHub ↗</a>`
+      : "",
+    isValidUrl(data.linkedin)
+      ? `<a href="${esc(data.linkedin)}" class="chip">LinkedIn ↗</a>`
+      : "",
+  ]
+    .filter(Boolean)
+    .join("");
 
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-  <title>${filename}</title>
+  <title>${esc(filename)}</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
   <style>
-    /* ── Reset ── */
+    /* ── Base reset ── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    a { text-decoration: none; color: inherit; }
-
-    /* ── Screen styles ── */
+    html { font-size: 13px; }
     body {
-      background: #0f0e0c;
-      color: #f0ead8;
-      font-family: 'DM Sans', sans-serif;
-      font-size: 13px;
-      line-height: 1.6;
-      padding: 48px 0 80px;
+      font-family: 'DM Sans', system-ui, sans-serif;
+      background: #ffffff;
+      color: #1a1a1a;
+      line-height: 1.55;
+      padding: 40px 0 120px;
     }
-    .container { max-width: 820px; margin: 0 auto; padding: 0 36px; }
+    a { color: #b8860b; text-decoration: none; }
+    a:hover { text-decoration: underline; }
 
-    /* Hero */
-    .hero { margin-bottom: 52px; }
+    /* ── Layout ── */
+    .page { max-width: 780px; margin: 0 auto; padding: 0 40px; }
+
+    /* ── Hero ── */
+    .hero { margin-bottom: 36px; padding-bottom: 24px; border-bottom: 2px solid #1a1a1a; }
     .hero h1 {
       font-family: 'DM Serif Display', serif;
-      font-size: 52px;
-      color: #f0ead8;
-      line-height: 1.05;
-      letter-spacing: -0.02em;
-      margin-bottom: 10px;
+      font-size: 40px; font-weight: 400;
+      color: #1a1a1a; line-height: 1.1;
+      letter-spacing: -0.02em; margin-bottom: 6px;
     }
-    .hero .title { font-size: 19px; color: #f5c842; font-weight: 300; margin-bottom: 16px; }
-    .hero .summary { font-size: 14px; color: rgba(240,234,216,0.55); line-height: 1.8; max-width: 620px; margin-bottom: 22px; }
-    .chips { display: flex; flex-wrap: wrap; gap: 7px; }
-    .chip { font-size: 11px; border-radius: 6px; padding: 4px 11px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,235,180,0.1); color: rgba(240,234,216,0.5); }
-    .chip-gold { background: rgba(245,200,66,0.12); border-color: rgba(245,200,66,0.28); color: #f5c842; }
+    .hero .role { font-size: 16px; color: #b8860b; font-weight: 500; margin-bottom: 12px; }
+    .hero .summary { font-size: 12.5px; color: #444; line-height: 1.75; max-width: 680px; margin-bottom: 16px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip {
+      font-size: 11px; padding: 3px 10px; border-radius: 4px;
+      background: #f5f0e8; border: 1px solid #d4b896; color: #6b4c1e;
+    }
 
-    /* Section */
-    .section { margin-bottom: 44px; }
-    .section-title {
-      display: flex; align-items: center; gap: 12px;
+    /* ── Section heading ── */
+    .section { margin-bottom: 28px; }
+    .sec-title {
       font-family: 'DM Mono', monospace;
-      font-size: 10px; color: #f5c842;
-      letter-spacing: 0.14em; text-transform: uppercase;
-      margin-bottom: 18px;
+      font-size: 9px; color: #b8860b;
+      letter-spacing: 0.18em; text-transform: uppercase;
+      margin-bottom: 12px;
+      display: flex; align-items: center; gap: 10px;
     }
-    .section-line { flex: 1; height: 1px; background: rgba(245,200,66,0.15); }
+    .sec-line { flex: 1; height: 1px; background: #e8d5b0; }
 
-    /* Cards */
+    /* ── Experience cards ── */
     .card {
-      background: #1a1916;
-      border: 1px solid rgba(255,235,180,0.08);
-      border-radius: 10px;
-      padding: 18px 22px;
-      margin-bottom: 10px;
+      border: 1px solid #e8e0d0;
+      border-left: 3px solid #b8860b;
+      border-radius: 0 6px 6px 0;
+      padding: 12px 16px;
+      margin-bottom: 8px;
+      background: #fdfaf5;
+      page-break-inside: avoid;
+      break-inside: avoid;
     }
-    .card-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
-    .card-title { font-size: 14px; font-weight: 600; color: #f0ead8; }
-    .card-sub { font-size: 12px; color: #f5c842; margin-top: 2px; }
-    .period { font-size: 11px; color: rgba(240,234,216,0.3); font-family: 'DM Mono', monospace; white-space: nowrap; }
-    .highlights { list-style: none; display: flex; flex-direction: column; gap: 7px; }
-    .highlights li {
-      font-size: 12px; color: rgba(240,234,216,0.55);
-      line-height: 1.65; padding-left: 14px; position: relative;
+    .card-header {
+      display: flex; justify-content: space-between;
+      align-items: flex-start; flex-wrap: wrap; gap: 4px;
+      margin-bottom: 8px;
     }
-    .highlights li::before {
+    .card-title { font-size: 13px; font-weight: 600; color: #1a1a1a; }
+    .card-company { font-size: 11.5px; color: #b8860b; margin-top: 1px; font-weight: 500; }
+    .period { font-size: 10.5px; color: #888; font-family: 'DM Mono', monospace; white-space: nowrap; }
+    .bullets { list-style: none; display: flex; flex-direction: column; gap: 5px; }
+    .bullets li {
+      font-size: 11.5px; color: #444; line-height: 1.6;
+      padding-left: 14px; position: relative;
+    }
+    .bullets li::before {
       content: ""; position: absolute; left: 0; top: 7px;
-      width: 5px; height: 5px; border-radius: 50%;
-      background: #f5c842; opacity: 0.45;
+      width: 4px; height: 4px; border-radius: 50%; background: #b8860b;
     }
 
-    /* Skills pills */
-    .pills { display: flex; flex-wrap: wrap; gap: 7px; }
-    .pill { font-size: 11px; color: rgba(240,234,216,0.55); background: rgba(255,255,255,0.04); border: 1px solid rgba(255,235,180,0.08); border-radius: 6px; padding: 4px 10px; }
+    /* ── Skills pills ── */
+    .pills { display: flex; flex-wrap: wrap; gap: 6px; }
+    .pill {
+      font-size: 11px; padding: 3px 9px; border-radius: 4px;
+      background: #f5f0e8; border: 1px solid #ddd0b8; color: #4a3520;
+    }
 
-    /* Projects grid */
-    .projects-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 11px; }
-    .proj-card { background: #1a1916; border: 1px solid rgba(255,235,180,0.08); border-radius: 10px; padding: 16px 18px; display: flex; flex-direction: column; gap: 9px; }
-    .proj-title { font-size: 13px; font-weight: 600; color: #f0ead8; }
-    .proj-desc { font-size: 11px; color: rgba(240,234,216,0.5); line-height: 1.6; }
+    /* ── Projects grid ── */
+    .projects-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    }
+    .proj-card {
+      border: 1px solid #e8e0d0; border-radius: 6px;
+      padding: 12px 14px; background: #fdfaf5;
+      display: flex; flex-direction: column; gap: 7px;
+      page-break-inside: avoid; break-inside: avoid;
+    }
+    .proj-title { font-size: 12px; font-weight: 600; color: #1a1a1a; }
+    .proj-desc { font-size: 11px; color: #555; line-height: 1.55; }
     .tags { display: flex; flex-wrap: wrap; gap: 4px; }
-    .tag { font-size: 10px; color: #f5c842; background: rgba(245,200,66,0.1); border: 1px solid rgba(245,200,66,0.25); border-radius: 4px; padding: 1px 7px; }
+    .tag {
+      font-size: 9.5px; color: #7a5a20; background: #f5e8c8;
+      border: 1px solid #d4b896; border-radius: 3px; padding: 1px 6px;
+    }
     .proj-links { display: flex; gap: 6px; margin-top: auto; }
-    .link-live { font-size: 10px; color: #6fcf8a; background: rgba(111,207,138,0.08); border: 1px solid rgba(111,207,138,0.2); border-radius: 4px; padding: 2px 8px; }
-    .link-code { font-size: 10px; color: rgba(240,234,216,0.45); background: rgba(255,255,255,0.04); border: 1px solid rgba(255,235,180,0.08); border-radius: 4px; padding: 2px 8px; }
+    .link-live {
+      font-size: 10px; color: #2a7a45;
+      background: #eaf5ee; border: 1px solid #b0d8bc;
+      border-radius: 3px; padding: 2px 7px;
+    }
+    .link-code {
+      font-size: 10px; color: #666;
+      background: #f0f0f0; border: 1px solid #ccc;
+      border-radius: 3px; padding: 2px 7px;
+    }
 
-    /* Certs */
-    .cert-item { display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: rgba(240,234,216,0.55); margin-bottom: 7px; }
-    .diamond { color: #f5c842; flex-shrink: 0; margin-top: 1px; }
+    /* ── Education ── */
+    .edu-card { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 6px; }
 
-    /* Bottom grid */
-    .bottom-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px,1fr)); gap: 36px; }
+    /* ── Certs ── */
+    .cert-row { display: flex; gap: 8px; align-items: flex-start; font-size: 11.5px; color: #444; margin-bottom: 6px; }
+    .dot { color: #b8860b; flex-shrink: 0; }
 
-    /* Footer */
-    .footer { margin-top: 52px; padding-top: 20px; border-top: 1px solid rgba(255,235,180,0.08); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
-    .footer-text { font-size: 10px; color: rgba(240,234,216,0.22); font-family: 'DM Mono', monospace; }
-    .source-badge { font-size: 10px; color: rgba(240,234,216,0.22); background: rgba(255,255,255,0.03); border: 1px solid rgba(255,235,180,0.06); border-radius: 4px; padding: 2px 6px; }
+    /* ── Bottom 2-col ── */
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
 
-    /* Print button */
+    /* ── Footer ── */
+    .footer {
+      margin-top: 36px; padding-top: 14px;
+      border-top: 1px solid #e0d0b8;
+      display: flex; justify-content: space-between;
+      align-items: center; flex-wrap: wrap; gap: 8px;
+    }
+    .footer-text { font-size: 9px; color: #aaa; font-family: 'DM Mono', monospace; }
+    .src-badge {
+      font-size: 9px; color: #999; background: #f5f5f5;
+      border: 1px solid #e0e0e0; border-radius: 3px; padding: 1px 6px;
+    }
+
+    /* ── Floating print bar (screen only) ── */
     .print-bar {
       position: fixed; bottom: 0; left: 0; right: 0;
-      background: rgba(15,14,12,0.97);
-      border-top: 1px solid rgba(245,200,66,0.15);
-      padding: 14px 36px;
-      display: flex; align-items: center; justify-content: space-between;
-      gap: 12px; flex-wrap: wrap;
+      background: #fff; border-top: 2px solid #b8860b;
+      padding: 14px 40px;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+    }
+    .print-bar-filename { font-size: 12px; color: #888; font-family: 'DM Mono', monospace; }
+    .btn-print {
+      background: #b8860b; color: #fff; border: none;
+      border-radius: 7px; padding: 10px 24px;
+      font-size: 13px; font-weight: 600; cursor: pointer;
       font-family: 'DM Sans', sans-serif;
     }
-    .print-bar span { font-size: 12px; color: rgba(240,234,216,0.4); font-family: 'DM Mono', monospace; }
-    .btn-print {
-      background: #f5c842; color: #0f0e0c;
-      border: none; border-radius: 8px; padding: 10px 22px;
-      font-size: 13px; font-weight: 600; font-family: 'DM Sans', sans-serif;
-      cursor: pointer;
-    }
+    .btn-print:hover { background: #9a7009; }
     .btn-close {
-      background: transparent; color: rgba(240,234,216,0.45);
-      border: 1px solid rgba(255,235,180,0.12); border-radius: 8px; padding: 10px 16px;
-      font-size: 13px; font-family: 'DM Sans', sans-serif; cursor: pointer;
+      background: transparent; color: #888;
+      border: 1px solid #ddd; border-radius: 7px; padding: 10px 16px;
+      font-size: 13px; cursor: pointer; font-family: 'DM Sans', sans-serif;
     }
 
-    /* ── Print styles ── */
+    /* ── PRINT MEDIA ── */
     @media print {
       @page {
-        size: A4;
-        margin: 16mm 14mm 16mm 14mm;
+        size: A4 portrait;
+        margin: 14mm 12mm 14mm 12mm;
       }
 
-      /* Keep dark theme in print */
+      /* Force white background — no dark pages */
       html, body {
-        background: #0f0e0c !important;
-        color: #f0ead8 !important;
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-        color-adjust: exact !important;
+        background: #ffffff !important;
+        color: #1a1a1a !important;
       }
 
-      body { padding: 0 !important; font-size: 11px !important; }
-      .container { padding: 0 !important; max-width: 100% !important; }
+      body { padding: 0 !important; }
+      .page { padding: 0 !important; max-width: 100% !important; }
+
+      /* Hide the floating bar — this was causing blank pages */
       .print-bar { display: none !important; }
 
-      /* Hero adjustments */
-      .hero { margin-bottom: 32px !important; }
-      .hero h1 { font-size: 34px !important; margin-bottom: 6px !important; }
-      .hero .title { font-size: 15px !important; margin-bottom: 10px !important; }
-      .hero .summary { font-size: 11px !important; margin-bottom: 14px !important; }
-
-      /* Sections */
-      .section { margin-bottom: 28px !important; }
-      .section-title { margin-bottom: 12px !important; }
-
-      /* Cards */
-      .card { padding: 12px 16px !important; margin-bottom: 7px !important; border-radius: 7px !important; }
+      /* Tighten spacing for print */
+      .hero { margin-bottom: 22px !important; padding-bottom: 16px !important; }
+      .hero h1 { font-size: 28px !important; }
+      .hero .role { font-size: 13px !important; margin-bottom: 8px !important; }
+      .hero .summary { font-size: 11px !important; margin-bottom: 12px !important; }
+      .section { margin-bottom: 18px !important; }
+      .sec-title { margin-bottom: 8px !important; }
+      .card { padding: 9px 12px !important; margin-bottom: 6px !important; }
       .card-title { font-size: 12px !important; }
-      .card-sub { font-size: 11px !important; }
-      .highlights li { font-size: 10px !important; line-height: 1.5 !important; }
-      .pill { font-size: 10px !important; padding: 2px 8px !important; }
-
-      /* Projects */
-      .projects-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 8px !important; }
-      .proj-card { padding: 11px 14px !important; border-radius: 7px !important; }
+      .card-company { font-size: 11px !important; }
+      .bullets li { font-size: 10.5px !important; }
+      .pill { font-size: 10px !important; padding: 2px 7px !important; }
+      .projects-grid { gap: 7px !important; }
+      .proj-card { padding: 9px 11px !important; }
       .proj-title { font-size: 11px !important; }
       .proj-desc { font-size: 10px !important; }
+      .footer { margin-top: 20px !important; padding-top: 10px !important; }
 
-      /* Pagination — keep sections together, break between them */
-      .avoid-break { page-break-inside: avoid !important; break-inside: avoid !important; }
-      .section { page-break-inside: avoid !important; break-inside: avoid !important; }
-      .hero { page-break-after: avoid !important; break-after: avoid !important; }
+      /* Pagination control */
+      .card { page-break-inside: avoid !important; break-inside: avoid !important; }
       .proj-card { page-break-inside: avoid !important; break-inside: avoid !important; }
-
-      /* Force page break before Experience if it starts on a new page */
-      .section-experience { page-break-before: auto !important; }
-
-      /* Bottom grid */
-      .bottom-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 20px !important; }
-
-      /* Footer */
-      .footer { margin-top: 28px !important; padding-top: 12px !important; }
-      .footer-text, .source-badge { font-size: 9px !important; }
+      .hero { page-break-after: avoid !important; break-after: avoid !important; }
+      .section { page-break-inside: avoid !important; break-inside: avoid !important; }
+      /* Allow page break between sections, not within */
+      .section + .section { page-break-before: auto !important; }
     }
   </style>
 </head>
 <body>
-  <div class="container">
+<div class="page">
 
-    <!-- Hero -->
-    <div class="hero">
-      <h1>${safe(data.name) || "Your Name"}</h1>
-      <div class="title">${safe(data.title) || ""}</div>
-      ${safe(data.summary) ? `<p class="summary">${data.summary}</p>` : ""}
-      <div class="chips">${contactHTML}</div>
-    </div>
+  <!-- Hero -->
+  <div class="hero">
+    <h1>${esc(safe(data.name) || "Your Name")}</h1>
+    <div class="role">${esc(safe(data.title) || "")}</div>
+    ${safe(data.summary) ? `<p class="summary">${esc(data.summary)}</p>` : ""}
+    <div class="chips">${contactHTML}</div>
+  </div>
 
-    ${(data.skills || []).length ? `
-    <!-- Skills -->
-    <div class="section">
-      <div class="section-title">Skills <span class="section-line"></span></div>
+  ${
+    (data.skills || []).length
+      ? `<div class="section">
+      <div class="sec-title">Skills <span class="sec-line"></span></div>
       <div class="pills">${skillsHTML}</div>
-    </div>` : ""}
+    </div>`
+      : ""
+  }
 
-    ${(data.experience || []).length ? `
-    <!-- Experience -->
-    <div class="section section-experience">
-      <div class="section-title">Experience <span class="section-line"></span></div>
+  ${
+    (data.experience || []).length
+      ? `<div class="section">
+      <div class="sec-title">Experience <span class="sec-line"></span></div>
       ${experienceHTML}
-    </div>` : ""}
+    </div>`
+      : ""
+  }
 
-    ${(data.projects || []).length ? `
-    <!-- Projects -->
-    <div class="section">
-      <div class="section-title">Projects <span class="section-line"></span></div>
+  ${
+    (data.projects || []).length
+      ? `<div class="section">
+      <div class="sec-title">Projects <span class="sec-line"></span></div>
       <div class="projects-grid">${projectsHTML}</div>
-    </div>` : ""}
+    </div>`
+      : ""
+  }
 
-    ${(data.education || []).length ? `
-    <!-- Education -->
-    <div class="section">
-      <div class="section-title">Education <span class="section-line"></span></div>
+  ${
+    (data.education || []).length
+      ? `<div class="section">
+      <div class="sec-title">Education <span class="sec-line"></span></div>
       ${educationHTML}
-    </div>` : ""}
+    </div>`
+      : ""
+  }
 
-    ${(data.certifications || []).length || (data.languages || []).length ? `
-    <!-- Certs + Languages -->
-    <div class="bottom-grid section">
-      ${(data.certifications || []).length ? `
-      <div>
-        <div class="section-title">Certifications <span class="section-line"></span></div>
-        ${certsHTML}
-      </div>` : ""}
-      ${(data.languages || []).length ? `
-      <div>
-        <div class="section-title">Languages <span class="section-line"></span></div>
-        <div class="pills">${langsHTML}</div>
-      </div>` : ""}
-    </div>` : ""}
+  ${
+    (data.certifications || []).length || (data.languages || []).length
+      ? `<div class="two-col section">
+      ${
+        (data.certifications || []).length
+          ? `<div>
+          <div class="sec-title">Certifications <span class="sec-line"></span></div>
+          ${certsHTML}
+        </div>`
+          : "<div></div>"
+      }
+      ${
+        (data.languages || []).length
+          ? `<div>
+          <div class="sec-title">Languages <span class="sec-line"></span></div>
+          <div class="pills">${langsHTML}</div>
+        </div>`
+          : ""
+      }
+    </div>`
+      : ""
+  }
 
-    <!-- Footer -->
-    <div class="footer">
-      <span class="footer-text">Built with Career StepUp · AI-powered</span>
-      <div style="display:flex;gap:6px;">
-        ${(data.sources_used || []).map(s => `<span class="source-badge">${s}</span>`).join("")}
-      </div>
+  <div class="footer">
+    <span class="footer-text">Built with Career StepUp · AI-powered</span>
+    <div style="display:flex;gap:5px;">
+      ${(data.sources_used || []).map((s) => `<span class="src-badge">${esc(s)}</span>`).join("")}
     </div>
   </div>
+</div>
 
-  <!-- Print bar (hidden in print) -->
-  <div class="print-bar">
-    <span>${filename}</span>
-    <div style="display:flex;gap:8px;">
-      <button class="btn-close" onclick="window.close()">Close</button>
-      <button class="btn-print" onclick="window.print()">Save as PDF →</button>
-    </div>
+<!-- Floating bar — hidden in print via CSS -->
+<div class="print-bar">
+  <span class="print-bar-filename">${esc(filename)}.pdf</span>
+  <div style="display:flex;gap:8px;">
+    <button class="btn-close" onclick="window.close()">Close</button>
+    <button class="btn-print" onclick="window.print()">Save as PDF →</button>
   </div>
+</div>
 
-  <script>
-    // Auto-focus so user can immediately hit print
-    window.onload = () => document.querySelector('.btn-print').focus();
-  </script>
+<script>
+  // Set focus so user can see the page before printing
+  window.addEventListener('load', () => {
+    document.querySelector('.btn-print').focus();
+  });
+</script>
 </body>
 </html>`;
 }
 
-// ── Build standalone HTML export (same as print but without print bar) ────────
+// HTML export reuses the same template (print bar hidden in print, visible on screen)
 function buildHTMLExport(data, filename) {
-  // Reuse print HTML but strip the print-bar div
-  return buildPrintHTML(data, filename).replace(
-    /<!-- Print bar[\s\S]*?<\/div>\s*\n/,
-    ""
-  );
+  return buildPrintHTML(data, filename);
 }
 
-// ── Main component ────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Main component
+// ─────────────────────────────────────────────────────────────────────────────
 export default function PortfolioView({ data, filename, onReset }) {
   const [exportStatus, setExportStatus] = useState("");
   GlobalStyles();
@@ -367,11 +451,11 @@ export default function PortfolioView({ data, filename, onReset }) {
     const blob = new Blob([html], { type: "text/html;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const win = window.open(url, "_blank");
-    if (!win) alert("Please allow popups for this site to export PDF.");
+    if (!win) alert("Allow popups for this site to export PDF.");
     setTimeout(() => {
       URL.revokeObjectURL(url);
       setExportStatus("");
-    }, 5000);
+    }, 8000);
   };
 
   const sec = {
@@ -425,14 +509,13 @@ export default function PortfolioView({ data, filename, onReset }) {
         </div>
 
         <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
-          {data.sources_used?.map(src => (
+          {data.sources_used?.map((src) => (
             <span key={src} style={{ fontSize: "10px", color: C.gold, background: C.goldDim, border: `1px solid ${C.goldBorder}`, borderRadius: "20px", padding: "2px 8px" }}>
               {src}
             </span>
           ))}
           <span style={{ fontSize: "10px", color: C.textDim, fontFamily: C.fontMono }}>{filename}</span>
 
-          {/* HTML download */}
           <button onClick={handleExportHTML} disabled={exportStatus === "html"} style={{
             ...btnBase,
             background: exportStatus === "html" ? C.goldDim : "rgba(255,255,255,0.04)",
@@ -440,12 +523,11 @@ export default function PortfolioView({ data, filename, onReset }) {
             color: exportStatus === "html" ? C.gold : C.textMuted,
           }}>
             {exportStatus === "html" ? "✓ Downloaded!" : <>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>
               HTML
             </>}
           </button>
 
-          {/* PDF export */}
           <button onClick={handleExportPDF} disabled={exportStatus === "pdf"} style={{
             ...btnBase,
             background: exportStatus === "pdf" ? "rgba(245,200,66,0.2)" : C.gold,
@@ -453,7 +535,7 @@ export default function PortfolioView({ data, filename, onReset }) {
             border: `1px solid ${C.gold}`,
           }}>
             {exportStatus === "pdf" ? "Opening…" : <>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></svg>
               Export PDF
             </>}
           </button>
@@ -464,8 +546,8 @@ export default function PortfolioView({ data, filename, onReset }) {
         </div>
       </div>
 
-      {/* Live preview */}
-      <div id="portfolio-content" style={{ maxWidth: "860px", margin: "0 auto", padding: "64px 32px 100px" }}>
+      {/* Dark-theme live preview */}
+      <div style={{ maxWidth: "860px", margin: "0 auto", padding: "64px 32px 100px" }}>
 
         {/* Hero */}
         <div style={{ marginBottom: "64px", animation: "fadeUp 0.5s ease" }}>
@@ -491,7 +573,6 @@ export default function PortfolioView({ data, filename, onReset }) {
           </div>
         </div>
 
-        {/* Skills */}
         {data.skills?.length > 0 && (
           <div style={{ ...sec.wrap, animation: "fadeUp 0.5s ease 0.05s both" }}>
             <div style={sec.title}>Skills <span style={sec.line} /></div>
@@ -501,7 +582,6 @@ export default function PortfolioView({ data, filename, onReset }) {
           </div>
         )}
 
-        {/* Experience */}
         {data.experience?.length > 0 && (
           <div style={{ ...sec.wrap, animation: "fadeUp 0.5s ease 0.1s both" }}>
             <div style={sec.title}>Experience <span style={sec.line} /></div>
@@ -529,11 +609,10 @@ export default function PortfolioView({ data, filename, onReset }) {
           </div>
         )}
 
-        {/* Projects */}
         {data.projects?.length > 0 && (
           <div style={{ ...sec.wrap, animation: "fadeUp 0.5s ease 0.15s both" }}>
             <div style={sec.title}>Projects <span style={sec.line} /></div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(255px, 1fr))", gap: "12px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(255px,1fr))", gap: "12px" }}>
               {data.projects.map((proj, i) => (
                 <div key={i} style={{ ...sec.card, marginBottom: 0, display: "flex", flexDirection: "column", gap: "10px" }}
                   onMouseEnter={e => { e.currentTarget.style.borderColor = C.goldBorder; e.currentTarget.style.background = C.surfaceHover; }}
@@ -553,7 +632,6 @@ export default function PortfolioView({ data, filename, onReset }) {
           </div>
         )}
 
-        {/* Education */}
         {data.education?.length > 0 && (
           <div style={{ ...sec.wrap, animation: "fadeUp 0.5s ease 0.2s both" }}>
             <div style={sec.title}>Education <span style={sec.line} /></div>
@@ -569,14 +647,13 @@ export default function PortfolioView({ data, filename, onReset }) {
           </div>
         )}
 
-        {/* Certs + Languages */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px,1fr))", gap: "40px", animation: "fadeUp 0.5s ease 0.25s both" }}>
           {data.certifications?.length > 0 && (
             <div>
               <div style={sec.title}>Certifications <span style={sec.line} /></div>
               {data.certifications.map((c, i) => (
                 <div key={i} style={{ fontSize: "13px", color: C.textMuted, display: "flex", gap: "8px", alignItems: "flex-start", marginBottom: "8px" }}>
-                  <span style={{ color: C.gold, flexShrink: 0 }}>◆</span> {c}
+                  <span style={{ color: C.gold, flexShrink: 0 }}>◆</span>{c}
                 </div>
               ))}
             </div>
@@ -591,11 +668,10 @@ export default function PortfolioView({ data, filename, onReset }) {
           )}
         </div>
 
-        {/* Footer */}
         <div style={{ marginTop: "64px", paddingTop: "24px", borderTop: `1px solid ${C.border}`, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
           <span style={{ fontSize: "11px", color: C.textDim, fontFamily: C.fontMono }}>Built with Career StepUp · AI-powered</span>
           <div style={{ display: "flex", gap: "6px" }}>
-            {data.sources_used?.map(s => (
+            {data.sources_used?.map((s) => (
               <span key={s} style={{ fontSize: "10px", color: C.textDim, background: "rgba(255,255,255,0.03)", border: `1px solid ${C.border}`, borderRadius: "4px", padding: "2px 7px" }}>{s}</span>
             ))}
           </div>
