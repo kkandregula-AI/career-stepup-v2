@@ -26,6 +26,17 @@ const Icon = {
   ),
 };
 
+// Derive a clean filename from the PDF name or person's name
+function deriveFilename(pdfName, portfolioName) {
+  if (pdfName) {
+    return pdfName.replace(/\.pdf$/i, "").replace(/[^a-zA-Z0-9_\-]/g, "_");
+  }
+  if (portfolioName) {
+    return portfolioName.trim().replace(/[^a-zA-Z0-9_\-]/g, "_");
+  }
+  return "portfolio";
+}
+
 export default function InputStep({ onGenerate }) {
   const [pdf, setPdf] = useState(null);
   const [pdfName, setPdfName] = useState("");
@@ -67,12 +78,14 @@ export default function InputStep({ onGenerate }) {
     setLoading(true);
     setError("");
     try {
-      const portfolio = await buildPortfolio({
+      const data = await buildPortfolio({
         pdfBase64: pdf,
         linkedinText: linkedinText.trim(),
         githubUsername: githubUsername.trim(),
       });
-      onGenerate(portfolio);
+      // Derive filename from PDF name first, then from the person's name in the portfolio
+      const filename = deriveFilename(pdfName, data.name);
+      onGenerate({ data, filename });
     } catch (err) {
       setError(err.message || "Something went wrong. Please try again.");
     } finally {

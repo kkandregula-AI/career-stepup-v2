@@ -14,13 +14,9 @@ const LinkIcon = () => (
   </svg>
 );
 
-export default function PortfolioView({ data, onReset }) {
-  const [copied, setCopied] = useState(false);
-  GlobalStyles();
-
-  const handleCopy = () => {
-    const el = document.getElementById("portfolio-content");
-    const html = `<!DOCTYPE html>
+// Build the full standalone HTML string for the portfolio
+function buildHTMLExport(data, portfolioHTML) {
+  return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -31,16 +27,87 @@ export default function PortfolioView({ data, onReset }) {
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: #0f0e0c; font-family: 'DM Sans', sans-serif; color: #f0ead8; }
     a { color: inherit; text-decoration: none; }
+    a:hover { text-decoration: underline; }
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-thumb { background: rgba(245,200,66,0.18); border-radius: 2px; }
+    @media print {
+      body { background: #fff; color: #111; }
+      .no-print { display: none !important; }
+    }
   </style>
 </head>
-<body>${el.outerHTML}</body>
+<body>${portfolioHTML}</body>
 </html>`;
-    navigator.clipboard.writeText(html).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
-    });
+}
+
+export default function PortfolioView({ data, filename, onReset }) {
+  const [exportStatus, setExportStatus] = useState(""); // "html" | "pdf" | ""
+  GlobalStyles();
+
+  // ── HTML Export ─────────────────────────────────────────────────────────────
+  const handleExportHTML = () => {
+    setExportStatus("html");
+    try {
+      const el = document.getElementById("portfolio-content");
+      const html = buildHTMLExport(data, el.outerHTML);
+      const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${filename}.html`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } finally {
+      setTimeout(() => setExportStatus(""), 2000);
+    }
+  };
+
+  // ── PDF Export ──────────────────────────────────────────────────────────────
+  const handleExportPDF = () => {
+    setExportStatus("pdf");
+
+    // Inject a temporary print style that sets the document title (controls PDF filename)
+    const titleEl = document.title;
+    document.title = filename;
+
+    // Add print-specific overrides
+    const style = document.createElement("style");
+    style.id = "print-override";
+    style.textContent = `
+      @page { margin: 15mm; size: A4; }
+      @media print {
+        body { background: #fff !important; color: #111 !important; font-size: 12px; }
+        .toolbar { display: none !important; }
+        #portfolio-content {
+          max-width: 100% !important;
+          padding: 0 !important;
+          color: #111 !important;
+        }
+        h1 { color: #111 !important; font-size: 28px !important; }
+        a { color: #c8860a !important; }
+        [style*="background: rgba"] { background: transparent !important; }
+        [style*="background: #1a"] { background: #f9f9f9 !important; }
+        [style*="border"] { border-color: #ddd !important; }
+        [style*="color: rgba(240,234,216,0.48)"] { color: #444 !important; }
+        [style*="color: rgba(240,234,216,0.5)"] { color: #444 !important; }
+        [style*="color: rgba(240,234,216,0.4)"] { color: #555 !important; }
+        [style*="color: rgba(240,234,216,0.25)"] { color: #777 !important; }
+        [style*="color: #f0ead8"] { color: #111 !important; }
+        [style*="color: #f5c842"] { color: #c8860a !important; }
+        [style*="color: #6fcf8a"] { color: #2a7a45 !important; }
+      }
+    `;
+    document.head.appendChild(style);
+
+    setTimeout(() => {
+      window.print();
+      // Restore after print dialog closes
+      document.title = titleEl;
+      document.head.removeChild(style);
+      setTimeout(() => setExportStatus(""), 1000);
+    }, 100);
   };
 
   const sec = {
@@ -67,38 +134,82 @@ export default function PortfolioView({ data, onReset }) {
     },
   };
 
+  const btnBase = {
+    padding: "7px 14px", borderRadius: "7px", fontSize: "12px",
+    fontWeight: 500, fontFamily: C.fontSans, cursor: "pointer", transition: "all 0.2s",
+    display: "flex", alignItems: "center", gap: "6px",
+  };
+
   return (
     <div style={{ minHeight: "100vh", background: C.bg, fontFamily: C.fontSans }}>
 
       {/* Sticky toolbar */}
-      <div style={{
+      <div className="toolbar" style={{
         position: "sticky", top: 0, zIndex: 100,
         background: "rgba(15,14,12,0.96)", backdropFilter: "blur(14px)",
         borderBottom: `1px solid ${C.border}`,
         padding: "12px 28px", display: "flex", alignItems: "center", justifyContent: "space-between",
+        flexWrap: "wrap", gap: "10px",
       }}>
         <div style={{ fontFamily: C.fontSerif, fontSize: "17px", color: C.text }}>
           Career <span style={{ color: C.gold, fontStyle: "italic" }}>StepUp</span>
         </div>
-        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+        <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+
+          {/* Source badges */}
           {data.sources_used?.map((src) => (
             <span key={src} style={{ fontSize: "10px", color: C.gold, background: C.goldDim, border: `1px solid ${C.goldBorder}`, borderRadius: "20px", padding: "2px 8px", letterSpacing: "0.05em" }}>
               {src}
             </span>
           ))}
-          <button onClick={handleCopy} style={{
-            padding: "7px 14px", borderRadius: "7px", fontSize: "12px", fontWeight: 500,
-            fontFamily: C.fontSans, cursor: "pointer", transition: "all 0.2s",
-            background: copied ? "rgba(111,207,138,0.1)" : C.goldDim,
-            border: `1px solid ${copied ? "rgba(111,207,138,0.3)" : C.goldBorder}`,
-            color: copied ? C.green : C.gold,
-          }}>
-            {copied ? "✓ Copied!" : "Copy HTML"}
+
+          {/* Filename indicator */}
+          <span style={{ fontSize: "10px", color: C.textDim, fontFamily: C.fontMono, padding: "2px 0" }}>
+            {filename}
+          </span>
+
+          {/* Export HTML */}
+          <button
+            onClick={handleExportHTML}
+            disabled={exportStatus === "html"}
+            style={{
+              ...btnBase,
+              background: exportStatus === "html" ? C.goldDim : "rgba(255,255,255,0.04)",
+              border: `1px solid ${exportStatus === "html" ? C.goldBorder : C.border}`,
+              color: exportStatus === "html" ? C.gold : C.textMuted,
+            }}
+          >
+            {exportStatus === "html" ? "✓ Downloaded!" : (
+              <>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                HTML
+              </>
+            )}
           </button>
+
+          {/* Export PDF */}
+          <button
+            onClick={handleExportPDF}
+            disabled={exportStatus === "pdf"}
+            style={{
+              ...btnBase,
+              background: exportStatus === "pdf" ? C.goldDim : C.goldDim,
+              border: `1px solid ${C.goldBorder}`,
+              color: C.gold,
+            }}
+          >
+            {exportStatus === "pdf" ? "Opening print…" : (
+              <>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                PDF
+              </>
+            )}
+          </button>
+
+          {/* Reset */}
           <button onClick={onReset} style={{
-            padding: "7px 14px", background: "transparent", border: `1px solid ${C.border}`,
-            borderRadius: "7px", color: C.textMuted, fontSize: "12px",
-            cursor: "pointer", fontFamily: C.fontSans,
+            ...btnBase,
+            background: "transparent", border: `1px solid ${C.border}`, color: C.textMuted,
           }}>
             ← New Portfolio
           </button>
@@ -121,7 +232,6 @@ export default function PortfolioView({ data, onReset }) {
               {data.summary}
             </p>
           )}
-          {/* Contact chips */}
           <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
             {[
               data.email && { label: data.email, href: `mailto:${data.email}` },
@@ -141,7 +251,6 @@ export default function PortfolioView({ data, onReset }) {
                   color: item.href ? C.gold : C.textMuted,
                   background: item.href ? C.goldDim : "rgba(255,255,255,0.03)",
                   border: `1px solid ${item.href ? C.goldBorder : C.border}`,
-                  transition: "opacity 0.15s",
                 }}>
                 {item.href && <LinkIcon />}
                 {item.label}
@@ -242,7 +351,7 @@ export default function PortfolioView({ data, onReset }) {
           </div>
         )}
 
-        {/* Certs + Languages row */}
+        {/* Certs + Languages */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "40px", animation: "fadeUp 0.5s ease 0.25s both" }}>
           {data.certifications?.length > 0 && (
             <div>
