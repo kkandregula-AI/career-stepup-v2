@@ -2,10 +2,46 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
+    <!-- Primary meta -->
     <title>Career StepUp — AI Portfolio Builder</title>
-    <meta name="description" content="Drop your resume, LinkedIn, or GitHub. Get a stunning portfolio instantly." />
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚀</text></svg>" />
+    <meta name="description" content="Drop your resume, LinkedIn, or GitHub. Get a stunning AI-powered portfolio instantly." />
+    <meta name="author" content="Career StepUp" />
+
+    <!-- PWA manifest (Android + modern browsers) -->
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Theme color (Android Chrome toolbar & PWA title bar) -->
+    <meta name="theme-color" content="#f5c842" />
+
+    <!-- ── iOS / Safari PWA ── -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="StepUp" />
+
+    <!-- iOS home screen icons (Safari ignores manifest — needs explicit links) -->
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="120x120" href="/icons/apple-touch-icon-120x120.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/icons/apple-touch-icon-152x152.png" />
+    <link rel="apple-touch-icon" sizes="167x167" href="/icons/apple-touch-icon-167x167.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
+
+    <!-- Favicons (browser tab) -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+
+    <!-- Open Graph (link previews on LinkedIn, WhatsApp, etc.) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Career StepUp — AI Portfolio Builder" />
+    <meta property="og:description" content="Drop your resume, LinkedIn, or GitHub. Get a stunning AI-powered portfolio instantly." />
+    <meta property="og:image" content="/icons/icon-512x512.png" />
+
+    <!-- Twitter card -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Career StepUp — AI Portfolio Builder" />
+    <meta name="twitter:description" content="Drop your resume, LinkedIn, or GitHub. Get a stunning AI-powered portfolio instantly." />
+    <meta name="twitter:image" content="/icons/icon-512x512.png" />
   </head>
   <body>
     <div id="root"></div>
